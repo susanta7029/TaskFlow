@@ -20,7 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, taskC
   const navItems = [
     { id: 'dashboard', label: 'Dashboard & Stats', icon: LayoutDashboard },
     { id: 'kanban', label: 'Kanban Board', icon: Trello },
-    { id: 'list', label: 'Task Backlog', icon: ListTodo, badge: taskCount },
+    { id: 'list', label: 'All Tasks List', icon: ListTodo, badge: taskCount },
     { id: 'activity', label: 'Activity Audit Log', icon: History },
   ];
 
