@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  taskflow-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taskflow_ai_app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:./dev.db
+      - JWT_SECRET=taskflow_ai_docker_secret_key_2026
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - sqlite_data:/app/prisma
+    restart: always
+
+volumes:
+  sqlite_data:
