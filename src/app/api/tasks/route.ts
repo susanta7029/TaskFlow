@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, ensureDbUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const dbUser = await ensureDbUser(userPayload);
+    const effectiveUserId = dbUser ? dbUser.id : userPayload.userId;
+
     const { title, description, status, priority, dueDate, projectId, assigneeId } = await req.json();
 
     if (!title || !projectId) {
@@ -53,7 +56,7 @@ export async function POST(req: NextRequest) {
         dueDate: dueDate ? new Date(dueDate) : null,
         projectId,
         assigneeId: assigneeId || null,
-        createdById: userPayload.userId,
+        createdById: effectiveUserId,
       },
       include: {
         assignee: { select: { id: true, name: true, email: true } },
@@ -65,7 +68,7 @@ export async function POST(req: NextRequest) {
     await prisma.activityLog.create({
       data: {
         projectId,
-        userId: userPayload.userId,
+        userId: effectiveUserId,
         action: 'TASK_CREATED',
         details: `Created task "${title}" [${task.priority}]`,
       },

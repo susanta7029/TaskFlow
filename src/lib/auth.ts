@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
+import { prisma } from './prisma';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_12345';
 
@@ -49,4 +50,32 @@ export function getCurrentUser(req: NextRequest): TokenPayload | null {
   const token = getTokenFromRequest(req);
   if (!token) return null;
   return verifyToken(token);
+}
+
+/**
+ * Ensures that the authenticated user from JWT exists in the database
+ * Prevents foreign key constraint errors when database is recreated/reset.
+ */
+export async function ensureDbUser(userPayload: TokenPayload) {
+  try {
+    let dbUser = await prisma.user.findUnique({ where: { id: userPayload.userId } });
+    if (!dbUser) {
+      dbUser = await prisma.user.findUnique({ where: { email: userPayload.email } });
+    }
+    if (!dbUser) {
+      dbUser = await prisma.user.create({
+        data: {
+          id: userPayload.userId,
+          email: userPayload.email,
+          name: userPayload.name,
+          passwordHash: '$2a$10$e7V/4e7.kH8f8s9K0j1L2u',
+          role: userPayload.role || 'MEMBER',
+        },
+      });
+    }
+    return dbUser;
+  } catch (e) {
+    console.error('ensureDbUser error:', e);
+    return null;
+  }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, ensureDbUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
     if (!userPayload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    await ensureDbUser(userPayload);
 
     // Get projects where user is owner or member
     const projects = await prisma.project.findMany({
@@ -39,6 +41,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const dbUser = await ensureDbUser(userPayload);
+    const effectiveUserId = dbUser ? dbUser.id : userPayload.userId;
+
     const { name, description } = await req.json();
 
     if (!name || name.trim() === '') {
@@ -49,9 +54,9 @@ export async function POST(req: NextRequest) {
       data: {
         name,
         description,
-        ownerId: userPayload.userId,
+        ownerId: effectiveUserId,
         members: {
-          create: [{ userId: userPayload.userId, role: 'OWNER' }],
+          create: [{ userId: effectiveUserId, role: 'OWNER' }],
         },
       },
       include: {
@@ -65,7 +70,7 @@ export async function POST(req: NextRequest) {
     await prisma.activityLog.create({
       data: {
         projectId: project.id,
-        userId: userPayload.userId,
+        userId: effectiveUserId,
         action: 'PROJECT_CREATED',
         details: `Created project "${name}"`,
       },
